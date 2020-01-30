@@ -1,6 +1,28 @@
 var autoRefreshCount = 0;
 var autoRefreshIntervalId = null;
 
+function compareTimeslots(ts1, ts2) {
+    const ts1StartMoment = moment(`${ts1.dayOfWeek} ${ts1.startTime}`, "ddd dddd HH:mm:ss");
+    const ts1EndMoment = moment(`${ts1.dayOfWeek} ${ts1.endTime}`, "ddd dddd HH:mm:ss");
+    const ts2StartMoment = moment(`${ts2.dayOfWeek} ${ts2.startTime}`, "ddd dddd HH:mm:ss");
+    const ts2EndMoment = moment(`${ts2.dayOfWeek} ${ts2.endTime}`, "ddd dddd HH:mm:ss");
+
+    if (ts1StartMoment.isBefore(ts2StartMoment)) {
+        return -1;
+    } else if (ts2StartMoment.isBefore(ts1StartMoment)) {
+        return 1;
+    }
+
+    if (ts1EndMoment.isBefore(ts2EndMoment)) {
+        return -1;
+    } else if (ts2EndMoment.isBefore(ts1EndMoment)) {
+        return 1;
+    }
+
+    // If same timeslots, compare based on ids:
+    return ts1.id - ts2.id;
+}
+
 function refreshTimeTable() {
     $.getJSON("/timeTable", function (timeTable) {
         refreshSolvingButtons(timeTable.solverStatus != null && timeTable.solverStatus !== "NOT_SOLVING");
@@ -53,6 +75,7 @@ function refreshTimeTable() {
         const tbodyByRoom = $("<tbody>").appendTo(timeTableByRoom);
         const tbodyByTeacher = $("<tbody>").appendTo(timeTableByTeacher);
         const tbodyByStudentGroup = $("<tbody>").appendTo(timeTableByStudentGroup);
+        timeTable.timeslotList.sort((ts1, ts2) => compareTimeslots(ts1, ts2));
         $.each(timeTable.timeslotList, (index, timeslot) => {
             const rowByRoom = $("<tr>").appendTo(tbodyByRoom);
             rowByRoom
@@ -242,13 +265,13 @@ function deleteRoom(room) {
 }
 
 function showError(title, xhr) {
-    const serverErrorMessage = xhr.responseJSON == null ? "No response from server." : xhr.responseJSON.message;
+    const serverErrorMessage = !xhr.responseJSON ? `${xhr.status}: ${xhr.statusText}` : xhr.responseJSON.message;
     console.error(title + "\n" + serverErrorMessage);
     const notification = $(`
     <div class="toast" role="alert" role="alert" aria-live="assertive" aria-atomic="true" style="min-width: 30rem">
         <div class="toast-header bg-danger">
             <strong class="mr-auto text-dark">Error</strong>
-            <button type="button" class="ml-2 mb-1 close" data-dismiss="alert" aria-label="Close">
+            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </button>
         </div>
